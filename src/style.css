@@ -142,16 +142,18 @@
   .sequence-status div { @apply min-w-0 p-4 sm:px-5; }
   .sequence-status span { @apply block text-xs text-muted; }
   .sequence-status strong { @apply mt-1 block truncate text-sm font-medium text-fg; }
+  .episode-watch-layout, .watch-layout { @apply grid items-start gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(19rem,0.65fr)]; }
   .episode-clips { @apply mt-5 p-5 sm:p-6; }
+  .episode-watch-layout .episode-clips { @apply mt-0; }
   .episode-clips-heading { @apply mb-4; }
-  .episode-clip-list { @apply flex gap-3 overflow-x-auto pb-2 [scrollbar-width:thin]; }
-  .episode-clip-row { @apply flex min-w-52 flex-1 flex-col gap-3 rounded-lg border border-line bg-raised p-4 transition; }
+  .episode-clip-list { @apply space-y-2; }
+  .episode-clip-row { @apply flex items-center gap-2 rounded-lg border border-line bg-raised p-2 transition; }
   .episode-clip-row.selected { @apply border-accent; background: color-mix(in srgb, var(--app-accent) 11%, var(--app-raised)); }
-  .episode-clip-main { @apply min-w-0 flex-1 text-left; }
-  .episode-clip-main span, .episode-clip-main small { @apply block text-xs text-muted; }
-  .episode-clip-main span { @apply text-accent; }
-  .episode-clip-main strong { @apply mt-1 block truncate text-sm font-medium text-fg; }
-  .episode-clip-row .episode-death-actions { @apply justify-end border-t border-line pt-3; }
+  .episode-clip-main { @apply flex min-w-0 flex-1 items-center gap-2 text-left; }
+  .episode-clip-main .sidebar-clip-copy > span, .episode-clip-main small { @apply block text-xs text-muted; }
+  .episode-clip-main .sidebar-clip-copy > span { @apply text-accent; }
+  .episode-clip-main strong { @apply mt-0.5 block truncate text-sm font-medium text-fg; }
+  .episode-clip-row .episode-death-actions { @apply shrink-0; }
   .episode-detail-layout { @apply grid items-start gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(22rem,0.65fr)]; }
   .episode-live-wrap { @apply overflow-hidden rounded-xl border border-line bg-black; }
   .episode-live { @apply aspect-video w-full border-0; }
@@ -175,14 +177,20 @@
   .death-context span { @apply block text-xs text-muted; }
   .death-context strong { @apply mt-1 block truncate text-sm font-medium text-fg; }
   .clip-rail-section { @apply rounded-xl border border-line bg-panel p-5 sm:p-6; }
+  .watch-sidebar { @apply max-h-[calc(100vh-10rem)] overflow-y-auto [scrollbar-width:thin]; }
   .clip-rail-section .wiki-header { @apply mb-4; }
   .clip-rail-section .wiki-header p { @apply mt-1 text-xs text-muted; }
-  .clip-rail { @apply flex gap-3 overflow-x-auto pb-2 [scrollbar-width:thin]; }
-  .clip-rail-item { @apply flex min-w-44 flex-1 flex-col items-start rounded-lg border border-line bg-raised p-4 text-left transition hover:border-accent hover:bg-panel; }
+  .clip-rail { @apply space-y-2; }
+  .clip-rail-item { @apply flex w-full items-center gap-2 rounded-lg border border-line bg-raised p-2 text-left transition hover:border-accent hover:bg-panel; }
   .clip-rail-item.selected { @apply border-accent; background: color-mix(in srgb, var(--app-accent) 13%, var(--app-raised)); }
-  .clip-rail-item span { @apply text-xs text-accent; }
-  .clip-rail-item strong { @apply mt-4 text-sm font-medium text-fg; }
-  .clip-rail-item small { @apply mt-1 text-xs text-muted; }
+  .sidebar-clip-preview { @apply relative block aspect-video w-28 shrink-0 overflow-hidden rounded bg-black; }
+  .sidebar-clip-preview video { @apply size-full object-cover; }
+  .sidebar-clip-preview::after { content: ''; @apply absolute inset-0 bg-black/20; }
+  .sidebar-clip-preview i { @apply absolute bottom-1 left-1 z-10 grid size-5 place-items-center rounded-full bg-black/70 text-[9px] not-italic text-white; }
+  .sidebar-clip-copy { @apply min-w-0; }
+  .sidebar-clip-copy > span { @apply block text-xs text-accent; }
+  .sidebar-clip-copy strong { @apply mt-0.5 block truncate text-sm font-medium text-fg; }
+  .sidebar-clip-copy small { @apply mt-1 block text-xs text-muted; }
   .detail-json-block { @apply mt-0; }
   .cause-profile { @apply overflow-hidden; }
   .cause-image { @apply aspect-[16/8] w-full bg-bg; }
@@ -351,7 +359,8 @@
     .dashboard-content { @apply pb-0 pt-4; }
     .dashboard-content.clips-content { @apply h-[100dvh] overflow-hidden p-0; }
     .detail-layout { @apply grid-cols-1; }
-    .episode-detail-layout { @apply grid-cols-1; }
+    .episode-detail-layout, .episode-watch-layout, .watch-layout { @apply grid-cols-1; }
+    .watch-sidebar { @apply max-h-none; }
     .death-log li { @apply grid-cols-[2.25rem_minmax(0,1fr)]; }
     .copy-link { @apply col-span-2 justify-self-end; }
     .death-json { @apply col-span-2; }

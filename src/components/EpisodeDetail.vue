@@ -46,6 +46,7 @@ onBeforeUnmount(() => window.removeEventListener('message', onYoutubeMessage))
     <button class="icon-back" aria-label="Voltar aos episódios" title="Voltar" @click="emit('close')"><ArrowLeft :size="20" /></button>
     <header class="episode-detail-header"><span class="episode-kicker">Temporada {{ seasonValue({}, episode) }} · EP {{ episodeValue({}, episode) }}</span><h1>{{ title ?? episode.name ?? episode.title ?? `Episódio ${episodeValue({}, episode)}` }}</h1><p>{{ deaths.length }} {{ deaths.length === 1 ? 'morte registrada' : 'mortes registradas' }}</p></header>
 
+    <div class="episode-watch-layout">
     <section class="episode-sequence dashboard-card">
       <div class="sequence-header"><div><h2>Assistir em sequência</h2><p>Escolha a origem e ative a sequência automática apenas se quiser avançar entre os trechos.</p></div><div class="sequence-controls"><div class="sequence-modes" role="group" aria-label="Modo de reprodução"><button :class="sequenceMode === 'clips' && 'active'" @click="setMode('clips')"><Clapperboard :size="16" />Clipes</button><button :class="sequenceMode === 'youtube' && 'active'" @click="setMode('youtube')"><TvMinimalPlay :size="16" />YouTube</button></div><label class="autoplay-switch"><input v-model="sequenceAutoplay" type="checkbox" /><span></span>Avançar automaticamente</label></div></div>
       <p v-if="!deaths.length" class="empty-deaths">Não há clipes para assistir neste episódio.</p>
@@ -60,13 +61,14 @@ onBeforeUnmount(() => window.removeEventListener('message', onYoutubeMessage))
       </template>
     </section>
 
-    <section class="episode-clips dashboard-card">
+    <aside class="episode-clips dashboard-card watch-sidebar">
       <div class="episode-clips-heading"><div><h2>Clipes do episódio</h2><p>Selecione um trecho para assistir a partir dele.</p></div></div>
       <p v-if="!deaths.length" class="empty-deaths">Nenhuma morte registrada.</p>
       <div v-else class="episode-clip-list">
-        <article v-for="(death, index) in deaths" :key="death.id" class="episode-clip-row" :class="sequenceIndex === index && 'selected'"><button class="episode-clip-main" @click="watchDeath(death)"><span>Clipe {{ index + 1 }}</span><strong>{{ death.cause?.detail ?? death.cause?.type ?? 'Causa não identificada' }}</strong><small>{{ death.clip_start || 'Início não informado' }}</small></button><div class="episode-death-actions"><button class="episode-icon-button" :aria-label="`Assistir morte ${death.id}`" title="Assistir no sequenciador" @click="watchDeath(death)"><Eye :size="17" /></button><a class="episode-icon-button" :href="deathCodebergUrl(death, episode)" target="_blank" rel="noreferrer" :aria-label="`Abrir clipe da morte ${death.id}`" title="Abrir clipe no Codeberg"><Download :size="17" /></a></div></article>
+        <article v-for="(death, index) in deaths" :key="death.id" class="episode-clip-row" :class="sequenceIndex === index && 'selected'"><button class="episode-clip-main" @click="watchDeath(death)"><span class="sidebar-clip-preview"><video :src="deathVideoUrl(death, death.episode ?? episode)" muted playsinline preload="metadata" aria-hidden="true" /><i>▶</i></span><span class="sidebar-clip-copy"><span>Clipe {{ index + 1 }}</span><strong>{{ death.cause?.detail ?? death.cause?.type ?? 'Causa não identificada' }}</strong><small>{{ death.clip_start || 'Início não informado' }}</small></span></button><div class="episode-death-actions"><button class="episode-icon-button" :aria-label="`Assistir morte ${death.id}`" title="Assistir no sequenciador" @click="watchDeath(death)"><Eye :size="17" /></button><a class="episode-icon-button" :href="deathCodebergUrl(death, episode)" target="_blank" rel="noreferrer" :aria-label="`Abrir clipe da morte ${death.id}`" title="Abrir clipe no Codeberg"><Download :size="17" /></a></div></article>
       </div>
-    </section>
+    </aside>
+    </div>
     <ClassificationDisclaimer />
   </section>
 </template>

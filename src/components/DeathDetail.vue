@@ -63,6 +63,7 @@ onBeforeUnmount(() => { clearControlsTimer(); document.removeEventListener('full
     </header>
 
     <div class="detail-layout">
+      <div class="watch-layout">
       <section class="video-column">
         <div v-if="activeDeath" ref="playerRoot" class="player-wrap detail-player" @mouseenter="showControls" @mousemove="showControls" @mouseleave="hideControls" @touchstart.passive="showControls" @focusin="showControls">
           <video ref="player" :key="videoUrl" class="death-player" autoplay playsinline :src="videoUrl" @click="togglePlayback" @timeupdate="updateProgress" @play="paused = false" @pause="paused = true" @volumechange="muted = player?.muted ?? false" @ended="autoplay && next()" />
@@ -82,13 +83,14 @@ onBeforeUnmount(() => { clearControlsTimer(); document.removeEventListener('full
         <div v-if="activeComment" class="death-comment">“{{ activeComment }}”</div>
       </section>
 
-      <section class="clip-rail-section">
+      <aside class="clip-rail-section watch-sidebar">
         <div class="wiki-header"><div><h2>Clipes desta causa</h2><p>{{ deaths.length }} {{ deaths.length === 1 ? 'registro disponível' : 'registros disponíveis' }}</p></div><label class="autoplay-switch"><input v-model="autoplay" type="checkbox" /><span></span>Reproduzir em sequência</label></div>
         <p v-if="!deaths.length" class="empty-deaths">Nenhuma morte registrada para esta causa.</p>
         <div v-else class="clip-rail" role="list" aria-label="Clipes da causa">
-          <button v-for="(death, index) in deaths" :key="death.id" class="clip-rail-item" :class="index === activeIndex && 'selected'" role="listitem" @click="play(index)"><span>Clipe {{ death.position ?? death.id }}</span><strong>Registro #{{ death.id }}</strong><small>T{{ seasonValue(death, death.episode) }} · EP {{ episodeValue(death, death.episode) }}</small></button>
+          <button v-for="(death, index) in deaths" :key="death.id" class="clip-rail-item" :class="index === activeIndex && 'selected'" role="listitem" @click="play(index)"><span class="sidebar-clip-preview"><video :src="deathVideoUrl(death, death.episode)" muted playsinline preload="metadata" aria-hidden="true" /><i>▶</i></span><span class="sidebar-clip-copy"><span>Clipe {{ death.position ?? death.id }}</span><strong>Registro #{{ death.id }}</strong><small>T{{ seasonValue(death, death.episode) }} · EP {{ episodeValue(death, death.episode) }}</small></span></button>
         </div>
-      </section>
+      </aside>
+      </div>
       <details class="json-block detail-json-block"><summary>Dados da causa em JSON</summary><pre>{{ JSON.stringify(cause, null, 2) }}</pre></details>
       <ClassificationDisclaimer />
     </div>
