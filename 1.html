@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recortar clipes</title>
+<style>
+:root{--bg:#111;--panel:#181818;--line:#2a2a2a;--btn:#333;--text:#eee;--muted:#8d8d8d;--accent:#c8a15a;--err:#e07a6b;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:760px;margin:0 auto;padding:24px 16px 64px;display:flex;flex-direction:column;gap:16px}
+h1{font-size:20px;margin:0}
+h2{font-size:15px;margin:0 0 8px}
+section{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px}
+textarea,button{font:inherit;color:var(--text);background:#222;border:1px solid var(--line);border-radius:4px;padding:8px 10px}
+textarea{width:100%;height:130px;resize:vertical;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px}
+button{background:var(--btn);cursor:pointer}
+button:hover:not(:disabled){background:#3d3d3d}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.solid{background:var(--accent);color:#1a1405;border-color:var(--accent);font-weight:600}
+:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.muted{color:var(--muted);font-size:13px}
+.err{color:var(--err)}
+.temp{margin-top:10px}
+.temp>label{font-weight:600}
+.eps{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:2px 12px;margin:4px 0 0 22px}
+label{display:flex;gap:8px;align-items:center}
+input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px}
+.os{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}
+.os>div{border:1px solid var(--line);border-radius:6px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.os>div.mine{border-color:var(--accent)}
+.os button{width:100%}
+code{background:#222;padding:1px 5px;border-radius:3px;font-size:12px}
+#drop{position:fixed;inset:0;background:#000c;display:none;align-items:center;justify-content:center;font-size:18px;pointer-events:none}
+</style>
+</head>
+<body>
+<main>
+  <h1>Recortar clipes</h1>
+  <p class="muted" style="margin:-8px 0 0">Cole ou importe o JSON, escolha o que quer e baixe um arquivo para o seu sistema. Ele recorta só o trecho de cada clipe direto da live no YouTube, sem baixar o vídeo inteiro.</p>
+
+  <section>
+    <h2>1. Cole ou importe o JSON</h2>
+    <textarea id="txt" placeholder='{ "format": "pato7s-saved-clips", "clips": [ ... ] }  ou o episodes.json do tracker' spellcheck="false" aria-label="JSON dos clipes"></textarea>
+    <div class="row">
+      <button id="pick">Importar arquivo</button>
+      <input id="file" type="file" accept=".json,application/json" hidden>
+      <span id="msg" class="muted"></span>
+    </div>
+  </section>
+
+  <section id="s2" hidden>
+    <h2>2. Escolha o que recortar</h2>
+    <div id="sum" class="muted"></div>
+    <div class="row"><button id="all">Marcar todos</button><button id="none">Desmarcar todos</button></div>
+    <div id="groups"></div>
+  </section>
+
+  <section id="s3" hidden>
+    <h2>3. Baixe o arquivo do seu sistema</h2>
+    <div class="os">
+      <div id="os-win">
+        <strong>Windows</strong>
+        <button class="solid" data-os="win">Baixar recortar-clipes.bat</button>
+        <span class="muted">Clique duas vezes. Se o Windows avisar, use Mais informações e depois Executar assim mesmo.</span>
+      </div>
+      <div id="os-mac">
+        <strong>macOS</strong>
+        <button class="solid" data-os="mac">Baixar recortar-clipes.command</button>
+        <span class="muted">No Terminal: <code>bash ~/Downloads/recortar-clipes.command</code>. Clicar duas vezes costuma ser bloqueado.</span>
+      </div>
+      <div id="os-linux">
+        <strong>Linux</strong>
+        <button class="solid" data-os="linux">Baixar recortar-clipes.sh</button>
+        <span class="muted">No terminal: <code>bash recortar-clipes.sh</code>. Precisa de curl ou wget.</span>
+      </div>
+    </div>
+    <p class="muted" id="n3" style="margin-bottom:0"></p>
+    <p class="muted">Os recortes são baixados em paralelo (4 por vez). Para aumentar ou reduzir isso, defina <code>CLIP_PARALLEL</code> antes de executar o arquivo.</p>
+    <p class="muted">Na primeira vez o arquivo baixa o <code>yt-dlp</code> e o <code>ffmpeg</code> (mais de 100 MB) para uma pasta <code>ferramentas</code> ao lado dele; nada é instalado no sistema. Se você já tem os dois, ele usa os seus. Os recortes ficam em <code>temporada/episódio/death-N.mp4</code>; rodar de novo pula os que já existem.</p>
+    <p class="muted">Vídeo que exige login (idade ou membros)? Defina antes a variável <code>COOKIES_DO_NAVEGADOR</code> com o navegador, por exemplo <code>firefox</code> ou <code>chrome</code>.</p>
+  </section>
+</main>
+<div id="drop">Solte o arquivo JSON aqui</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+const safe = s => String(s).replace(/[^\w.-]+/g, '_');
+const DICA = 'Você também pode arrastar o arquivo para esta página.';
+
+const toSec = t => { if (t == null || t === '') return null; const p = String(t).trim().split(':').map(Number); return p.length > 3 || p.some(x => isNaN(x) || x < 0) ? null : p.reduce((a, x) => a * 60 + x, 0); };
+const fmt = s => { const ms = Math.round(s * 1000), pad = (n, l = 2) => String(n).padStart(l, '0');
+  return pad(Math.floor(ms / 3600000)) + ':' + pad(Math.floor(ms % 3600000 / 60000)) + ':' + pad(Math.floor(ms % 60000 / 1000)) + '.' + pad(ms % 1000, 3); };
+const vidId = (...cands) => { for (const x of cands) { const s = String(x || ''); if (/^[\w-]{11}$/.test(s)) return s; const m = /(?:v=|youtu\.be\/|\/live\/|\/embed\/)([\w-]{11})/.exec(s); if (m) return m[1]; } return null; };
+
+let items = [];            // { id, ini, fim, path: [temporada, episodio, arquivo], ep }
+const off = new Set();     // grupos desmarcados
+
+// aceita o formato "pato7s-saved-clips" e o episodes.json do tracker
+function collect(d) {
+  const out = [];
+  if (d && Array.isArray(d.clips)) {
+    for (const c of d.clips) {
+      const ep = (c && c.episode) || {};
+      out.push({ id: vidId(ep.video_id, ep.url), a: c.clip_start, b: c.clip_end, ep: ep.name,
+        path: [safe(String(ep.live_id || 'clipes').replace(/^live-/, '')), safe(c.episode_id || ep.id || 'ep'), 'death-' + safe(c.position ?? c.id) + '.mp4'] });
+    }
+  } else if (d && d.dadosGerais) {
+    for (const t of d.dadosGerais.temporadas || []) for (const l of t.lives || []) for (const e of l.episodios || [])
+      for (const [i, m] of (e.mortes || []).entries()) {
+        if (!m.clipe) continue;
+        const dm = /^death-(\d+)$/i.exec(m.id || '');
+        out.push({ id: vidId(e.videoId, e.url), a: m.clipe.timestampInicial, b: m.clipe.timestampFinal, ep: e.nome,
+          path: [safe(t.id), safe(e.id), (dm ? 'death-' + dm[1] : safe(m.id || 'clipe-' + (i + 1))) + '.mp4'] });
+      }
+  }
+  return out;
+}
+
+function parse(text) {
+  items = []; off.clear();
+  if (!text.trim()) return say('');
+  let d;
+  try { d = JSON.parse(text); } catch { return say('Isso não parece um JSON válido.', true); }
+  const raw = collect(d);
+  if (!raw.length) return say('Não encontrei clipes neste JSON (esperava "clips" ou "dadosGerais").', true);
+  const seen = new Set(); let ignorados = 0;
+  for (const r of raw) {
+    const a = toSec(r.a), b = toSec(r.b), key = r.path.join('/');
+    if (!r.id || a == null || b == null || b <= a || seen.has(key)) { if (!seen.has(key)) ignorados++; continue; }
+    seen.add(key);
+    items.push({ id: r.id, ini: fmt(a), fim: fmt(b), path: r.path, ep: r.ep || r.path[1] });
+  }
+  if (!items.length) return say('Nenhum clipe com vídeo, início e fim válidos.', true);
+  say(items.length + ' clipes lidos' + (ignorados ? ', ' + ignorados + ' ignorados (sem vídeo, ou início e fim inválidos).' : '.'));
+  render();
+}
+
+function say(t, isErr) {
+  $('msg').textContent = t || DICA;
+  $('msg').className = isErr ? 'err' : 'muted';
+  if (isErr || !items.length) { $('s2').hidden = true; $('s3').hidden = true; }
+}
+
+const gkey = it => it.path[0] + '/' + it.path[1];
+const chosen = () => items.filter(it => !off.has(gkey(it)));
+
+function render() {
+  const tree = new Map();
+  for (const it of items) {
+    if (!tree.has(it.path[0])) tree.set(it.path[0], new Map());
+    const eps = tree.get(it.path[0]);
+    if (!eps.has(gkey(it))) eps.set(gkey(it), { name: it.ep, n: 0 });
+    eps.get(gkey(it)).n++;
+  }
+  const box = $('groups'); box.replaceChildren();
+  for (const [temp, eps] of tree) {
+    const wrap = el('div', 'temp'), head = el('label'), tcb = el('input'); tcb.type = 'checkbox';
+    head.append(tcb, document.createTextNode(temp));
+    const list = el('div', 'eps'), cbs = [];
+    for (const [k, e] of eps) {
+      const l = el('label'), cb = el('input'); cb.type = 'checkbox'; cb.checked = !off.has(k);
+      cb.onchange = () => { cb.checked ? off.delete(k) : off.add(k); sync(); };
+      l.append(cb, document.createTextNode(e.name + ' (' + e.n + ')')); list.append(l); cbs.push([k, cb]);
+    }
+    tcb.onchange = () => { cbs.forEach(([k, cb]) => { cb.checked = tcb.checked; tcb.checked ? off.delete(k) : off.add(k); }); sync(); };
+    wrap.sync = () => { const n = cbs.filter(([, cb]) => cb.checked).length; tcb.checked = n === cbs.length; tcb.indeterminate = n > 0 && n < cbs.length; };
+    wrap.append(head, list); box.append(wrap);
+  }
+  $('s2').hidden = false; $('s3').hidden = false;
+  sync();
+}
+
+function sync() {
+  document.querySelectorAll('.temp').forEach(w => w.sync());
+  const n = chosen().length;
+  $('sum').textContent = n + ' de ' + items.length + ' clipes selecionados.';
+  $('n3').textContent = n ? 'O arquivo vai recortar ' + n + ' clipes.' : 'Selecione ao menos um clipe.';
+  document.querySelectorAll('[data-os]').forEach(b => b.disabled = !n);
+}
+
+// ---------- geração dos scripts ----------
+const GH = 'https://github.com/yt-dlp/';
+const FMT = 'bv*[height<=1080]+ba/b[height<=1080]/bv*+ba/b';
+const q = s => "'" + String(s).replace(/'/g, "'\\''") + "'";
+
+function genSh(list, os) {
+  const mac = os === 'mac';
+  const L = [
+    '#!/usr/bin/env bash',
+    'cd "$(dirname "$0")" || exit 1',
+    'total=' + list.length + '; ok=0; skip=0; fail=0',
+    'PARALLEL="${CLIP_PARALLEL:-4}"',
+    'case "$PARALLEL" in ""|*[!0-9]*|0) PARALLEL=4;; esac',
+    'mkdir -p ferramentas',
+    'fetch() { if command -v curl >/dev/null 2>&1; then curl -fL --retry 3 -o "$2" "$1"; elif command -v wget >/dev/null 2>&1; then wget -q -O "$2" "$1"; else echo "Precisa do curl ou do wget."; return 1; fi; }',
+    'fim() { echo "$1"; ' + (mac ? 'read -n 1 -s -r -p "Pressione qualquer tecla para fechar..."; echo; ' : '') + 'exit 1; }',
+    '',
+    '# yt-dlp: usa o do sistema, senao o da pasta ferramentas, senao baixa',
+    'if command -v yt-dlp >/dev/null 2>&1; then YT=yt-dlp',
+    'elif [ -x ferramentas/yt-dlp ]; then YT=./ferramentas/yt-dlp',
+    'else',
+    ...(mac ? ['  YTBIN=yt-dlp_macos'] : ['  case "$(uname -m)" in aarch64|arm64) YTBIN=yt-dlp_linux_aarch64;; *) YTBIN=yt-dlp_linux;; esac']),
+    '  echo "Baixando yt-dlp (so na primeira vez)..."',
+    '  fetch "' + GH + 'yt-dlp/releases/latest/download/$YTBIN" ferramentas/yt-dlp && chmod +x ferramentas/yt-dlp || fim "Nao consegui baixar o yt-dlp. Verifique a internet."',
+    '  YT=./ferramentas/yt-dlp',
+    'fi',
+    '',
+    '# ffmpeg: usa o do sistema, senao o da pasta ferramentas, senao baixa',
+    'FFDIR=""',
+    'if command -v ffmpeg >/dev/null 2>&1; then FF=ffmpeg',
+    'elif [ -x ferramentas/ffmpeg ]; then FF=./ferramentas/ffmpeg; FFDIR=ferramentas',
+    'else',
+    '  echo "Baixando ffmpeg (so na primeira vez, e grande)..."',
+    ...(mac ? [
+      '  fetch https://evermeet.cx/ffmpeg/getrelease/zip ferramentas/ff.zip && unzip -o -q ferramentas/ff.zip -d ferramentas && rm -f ferramentas/ff.zip && chmod +x ferramentas/ffmpeg || fim "Nao consegui baixar o ffmpeg. Instale com: brew install ffmpeg"',
+    ] : [
+      '  case "$(uname -m)" in aarch64|arm64) FFN=linuxarm64;; *) FFN=linux64;; esac',
+      '  fetch "' + GH + 'FFmpeg-Builds/releases/latest/download/ffmpeg-master-latest-$FFN-gpl.tar.xz" ferramentas/ff.tar.xz \\',
+      '    && tar -xJf ferramentas/ff.tar.xz -C ferramentas --strip-components=2 --wildcards "*/bin/ffmpeg" "*/bin/ffprobe" \\',
+      '    && rm -f ferramentas/ff.tar.xz && chmod +x ferramentas/ffmpeg ferramentas/ffprobe || fim "Nao consegui instalar o ffmpeg (precisa do tar com suporte a xz)."',
+    ]),
+    '  FF=./ferramentas/ffmpeg; FFDIR=ferramentas',
+    'fi',
+    '',
+    'dl() {  # numero id inicio fim caminho',
+    '  n="$1"; out="$5"; tmp="$5.tmp.mp4"',
+    '  if [ -s "$out" ]; then echo "[$n/$total] ja existe: $out"; return 2; fi',
+    '  mkdir -p "$(dirname "$out")"',
+    '  echo "[$n/$total] recortando $3 - $4 : $out"',
+    '  if "$YT" --no-playlist --force-overwrites --retries 5 --fragment-retries 5 --download-sections "*$3-$4" --force-keyframes-at-cuts \\',
+    '       -f "' + FMT + '" --merge-output-format mp4 ${FFDIR:+--ffmpeg-location "$FFDIR"} ${COOKIES_DO_NAVEGADOR:+--cookies-from-browser "$COOKIES_DO_NAVEGADOR"} \\',
+    '       -o "$tmp" "https://www.youtube.com/watch?v=$2" \\',
+    '     && [ -s "$tmp" ] \\',
+    '     && "$FF" -hide_banner -loglevel error -y -i "$tmp" -c:v libx264 -crf 28 -preset medium -pix_fmt yuv420p -c:a aac -b:a 96k -movflags +faststart -f mp4 "$out.part"; then',
+    '    mv "$out.part" "$out"; status=0',
+    '  else',
+    '    echo "  FALHOU"; status=1',
+    '  fi',
+    '  rm -f "$out.part" "$tmp" "$tmp.part" "$tmp.ytdl"',
+    '  return "$status"',
+    '}',
+    '',
+    'PIDS=()',
+    'collect() { for pid in "${PIDS[@]}"; do wait "$pid"; case $? in 0) ok=$((ok+1));; 2) skip=$((skip+1));; *) fail=$((fail+1));; esac; done; PIDS=(); }',
+    'echo "Recortando $total clipes em: $PWD ($PARALLEL em paralelo)"',
+    ...list.flatMap((it, index) => ['dl ' + [index + 1, it.id, it.ini, it.fim, it.path.join('/')].map(q).join(' ') + ' &', 'PIDS+=($!)', 'if [ "${#PIDS[@]}" -ge "$PARALLEL" ]; then collect; fi']),
+    'collect',
+    'echo; echo "Concluido: $ok recortados, $skip ja existiam, $fail falharam."',
+    'if [ "$fail" -gt 0 ]; then echo "Rode de novo para tentar so os que falharam. Se for login/idade, use COOKIES_DO_NAVEGADOR=firefox."; fi',
+  ];
+  if (mac) L.push('read -n 1 -s -r -p "Pressione qualquer tecla para fechar..."; echo');
+  L.push('exit 0');
+  return L.join('\n') + '\n';
+}
+
+const bq = s => String(s).replace(/%/g, '%%');
+const PS_DL = (url, dest) => `powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; (New-Object Net.WebClient).DownloadFile('${url}','${dest}')"`;
+
+function genBat(list) {
+  const L = [
+    '@echo off', 'setlocal EnableExtensions EnableDelayedExpansion', 'if /i "%~1"==":worker" goto worker', 'chcp 65001 >nul', 'cd /d "%~dp0"',
+    'set "TOTAL=' + list.length + '"', 'set /a OK=0', 'set /a SKIP=0', 'set /a FAIL=0', 'set /a RUNNING=0',
+    'set "PARALLEL=4"', 'if defined CLIP_PARALLEL set "PARALLEL=%CLIP_PARALLEL%"', 'for /f "delims=0123456789" %%A in ("%PARALLEL%") do set "PARALLEL=4"', 'if "%PARALLEL%"=="0" set "PARALLEL=4"',
+    'if not exist ferramentas mkdir ferramentas',
+    'set "CK="', 'if defined COOKIES_DO_NAVEGADOR set "CK=--cookies-from-browser %COOKIES_DO_NAVEGADOR%"',
+    'set "FFARG="',
+    '',
+    'rem --- yt-dlp: usa o do sistema, senao o da pasta ferramentas, senao baixa',
+    'set "YT=yt-dlp"', 'where yt-dlp >nul 2>&1', 'if not errorlevel 1 goto haveyt',
+    'set "YT=ferramentas\\yt-dlp.exe"', 'if exist "ferramentas\\yt-dlp.exe" goto haveyt',
+    'echo Baixando yt-dlp (so na primeira vez)...',
+    PS_DL(GH + 'yt-dlp/releases/latest/download/yt-dlp.exe', 'ferramentas\\yt-dlp.exe'),
+    'if errorlevel 1 goto toolfail',
+    ':haveyt', '',
+    'rem --- ffmpeg: usa o do sistema, senao o da pasta ferramentas, senao baixa',
+    'set "FF=ffmpeg"', 'where ffmpeg >nul 2>&1', 'if not errorlevel 1 goto haveff',
+    'set "FF=ferramentas\\ffmpeg.exe"', 'set "FFARG=--ffmpeg-location ferramentas"', 'if exist "ferramentas\\ffmpeg.exe" goto haveff',
+    'echo Baixando ffmpeg (so na primeira vez, e grande)...',
+    PS_DL(GH + 'FFmpeg-Builds/releases/latest/download/ffmpeg-master-latest-win64-gpl.zip', 'ferramentas\\ffmpeg.zip'),
+    'if errorlevel 1 goto toolfail',
+    `powershell -NoProfile -Command "Expand-Archive -Force 'ferramentas\\ffmpeg.zip' 'ferramentas\\ff'; Get-ChildItem 'ferramentas\\ff' -Recurse -Include ffmpeg.exe,ffprobe.exe | Copy-Item -Destination 'ferramentas'; Remove-Item -Recurse -Force 'ferramentas\\ff','ferramentas\\ffmpeg.zip'"`,
+    'if errorlevel 1 goto toolfail',
+    ':haveff', '',
+    'if not exist "ferramentas\\.jobs" mkdir "ferramentas\\.jobs"', 'del /q "ferramentas\\.jobs\\*.status" "ferramentas\\.jobs\\*.tmp" >nul 2>&1',
+    'echo Recortando %TOTAL% clipes em: %CD% (%PARALLEL% em paralelo)', 'echo.',
+    ...list.map((it, index) => 'call :start ' + [index + 1, it.id, it.ini, it.fim, it.path.join('\\')].map(bq).map(s => '"' + s + '"').join(' ')),
+    'call :waitall',
+    'echo.', 'echo Concluido: %OK% recortados, %SKIP% ja existiam, %FAIL% falharam.',
+    'if %FAIL% GTR 0 echo Rode de novo para tentar so os que falharam. Se for login/idade, defina COOKIES_DO_NAVEGADOR (firefox, chrome).',
+    'pause', 'exit /b 0', '',
+    ':toolfail', 'echo Nao consegui baixar as ferramentas. Verifique a internet e tente de novo.', 'pause', 'exit /b 1', '',
+    ':start',
+    'start "" /b cmd /c call "%~f0" :worker "%~1" "%~2" "%~3" "%~4" "%~5"',
+    'set /a RUNNING+=1',
+    ':waitslot',
+    'if !RUNNING! LSS !PARALLEL! exit /b 0',
+    'call :reap',
+    'if !RUNNING! GEQ !PARALLEL! timeout /t 1 /nobreak >nul & goto waitslot',
+    'exit /b 0',
+    '',
+    ':waitall',
+    'if !RUNNING! LEQ 0 exit /b 0',
+    'call :reap',
+    'if !RUNNING! GTR 0 timeout /t 1 /nobreak >nul & goto waitall',
+    'exit /b 0',
+    '',
+    ':reap',
+    'for %%F in ("ferramentas\\.jobs\\*.status") do if exist "%%~fF" (set "RESULT=" & set /p RESULT=<"%%~fF" & if "!RESULT!"=="0" set /a OK+=1 & if "!RESULT!"=="2" set /a SKIP+=1 & if not "!RESULT!"=="0" if not "!RESULT!"=="2" set /a FAIL+=1 & del "%%~fF" & set /a RUNNING-=1)',
+    'exit /b 0',
+    '',
+    ':worker',
+    'set "N=%~2"', 'set "V=%~3"', 'set "S=%~4"', 'set "E=%~5"', 'set "P=%~6"',
+    'call :dl', 'set "RESULT=!ERRORLEVEL!"', '> "ferramentas\\.jobs\\!N!.tmp" echo !RESULT!', 'move /y "ferramentas\\.jobs\\!N!.tmp" "ferramentas\\.jobs\\!N!.status" >nul', 'exit /b !RESULT!',
+    '',
+    ':dl',
+    'set "DLRESULT=0"',
+    'set "HAVE=0"',
+    'if exist "%P%" for %%F in ("%P%") do if %%~zF GTR 0 set "HAVE=1"',
+    'if "%HAVE%"=="1" goto dlskip',
+    'for %%D in ("%P%") do if not exist "%%~dpD" mkdir "%%~dpD"',
+    'echo [%N%/%TOTAL%] recortando %S% - %E% : %P%',
+    `"%YT%" --no-playlist --force-overwrites --retries 5 --fragment-retries 5 --download-sections "*%S%-%E%" --force-keyframes-at-cuts -f "${FMT}" --merge-output-format mp4 %FFARG% %CK% -o "%P%.tmp.mp4" "https://www.youtube.com/watch?v=%V%"`,
+    'if errorlevel 1 goto dlfail',
+    'if not exist "%P%.tmp.mp4" goto dlfail',
+    '"%FF%" -hide_banner -loglevel error -y -i "%P%.tmp.mp4" -c:v libx264 -crf 28 -preset medium -pix_fmt yuv420p -c:a aac -b:a 96k -movflags +faststart -f mp4 "%P%.part"',
+    'if errorlevel 1 goto dlfail',
+    'move /y "%P%.part" "%P%" >nul',
+    'set "DLRESULT=0"',
+    'goto dlend',
+    ':dlskip', 'echo [%N%/%TOTAL%] ja existe: %P%', 'set "DLRESULT=2"', 'goto dlend',
+    ':dlfail', 'echo   FALHOU', 'set "DLRESULT=1"',
+    ':dlend',
+    'if exist "%P%.part" del "%P%.part"',
+    'if exist "%P%.tmp.mp4" del "%P%.tmp.mp4"',
+    'exit /b !DLRESULT!',
+  ];
+  return L.join('\r\n') + '\r\n';   // .bat precisa de CRLF
+}
+
+function baixar(nome, texto) {
+  const a = el('a');
+  a.href = URL.createObjectURL(new Blob([texto], { type: 'text/plain;charset=utf-8' }));
+  a.download = nome; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+
+document.querySelectorAll('[data-os]').forEach(b => b.onclick = () => {
+  const list = chosen(), os = b.dataset.os;
+  if (os === 'win') baixar('recortar-clipes.bat', genBat(list));
+  else if (os === 'mac') baixar('recortar-clipes.command', genSh(list, 'mac'));
+  else baixar('recortar-clipes.sh', genSh(list, 'linux'));
+});
+
+// ---------- entrada ----------
+$('txt').addEventListener('input', () => parse($('txt').value));
+$('pick').onclick = () => $('file').click();
+async function lerArquivo(f) { if (f) { const t = await f.text(); $('txt').value = t; parse(t); } }
+$('file').onchange = async e => { await lerArquivo(e.target.files[0]); e.target.value = ''; };
+$('all').onclick = () => { off.clear(); render(); };
+$('none').onclick = () => { items.forEach(it => off.add(gkey(it))); render(); };
+addEventListener('dragover', e => { e.preventDefault(); $('drop').style.display = 'flex'; });
+addEventListener('dragleave', e => { if (!e.relatedTarget) $('drop').style.display = 'none'; });
+addEventListener('drop', async e => { e.preventDefault(); $('drop').style.display = 'none'; await lerArquivo(e.dataTransfer.files[0]); });
+
+say('');
+const ua = navigator.userAgent;
+$(/Win/.test(ua) ? 'os-win' : /Mac/.test(ua) ? 'os-mac' : 'os-linux').classList.add('mine');
+</script>
+</body>
+</html>

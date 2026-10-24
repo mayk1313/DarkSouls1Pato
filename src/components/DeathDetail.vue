@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ArrowLeft, Maximize, Minimize, Pause, Play, Volume2, VolumeX } from '@lucide/vue'
 import { deathVideoUrl, episodeValue, seasonValue } from '../lib/video'
+import { clipExport, clipJsonFilename, jsonDataUrl } from '../lib/clip-json'
 import VideoMenu from './VideoMenu.vue'
 import ClassificationDisclaimer from './ClassificationDisclaimer.vue'
 
@@ -28,6 +29,8 @@ const videoUrl = computed(() => activeDeath.value ? deathVideoUrl(activeDeath.va
 const activeComment = computed(() => activeDeath.value?.clip_comment ?? activeDeath.value?.comment ?? activeDeath.value?.comments ?? '')
 const displayName = computed(() => props.cause.detail || props.cause.type)
 const activeIsSaved = computed(() => props.savedIds.some((id) => Number(id) === Number(activeDeath.value?.id)))
+const activeJsonUrl = computed(() => activeDeath.value ? jsonDataUrl(clipExport(activeDeath.value)) : '')
+const activeJsonFilename = computed(() => clipJsonFilename(activeDeath.value))
 
 function play(index) {
   activeIndex.value = index
@@ -63,7 +66,7 @@ onBeforeUnmount(() => { clearControlsTimer(); document.removeEventListener('full
       <section class="video-column">
         <div v-if="activeDeath" ref="playerRoot" class="player-wrap detail-player" @mouseenter="showControls" @mousemove="showControls" @mouseleave="hideControls" @touchstart.passive="showControls" @focusin="showControls">
           <video ref="player" :key="videoUrl" class="death-player" autoplay playsinline :src="videoUrl" @click="togglePlayback" @timeupdate="updateProgress" @play="paused = false" @pause="paused = true" @volumechange="muted = player?.muted ?? false" @ended="autoplay && next()" />
-          <VideoMenu class="detail-video-menu" :class="{ 'is-hidden': !controlsVisible }" :download-url="videoUrl" :saved="activeIsSaved" @save="saveCurrent" @share="shareCurrent" />
+          <VideoMenu class="detail-video-menu" :class="{ 'is-hidden': !controlsVisible }" :download-url="videoUrl" :json-url="activeJsonUrl" :json-filename="activeJsonFilename" :saved="activeIsSaved" @save="saveCurrent" @share="shareCurrent" />
           <div class="detail-player-controls" :class="{ 'is-hidden': !controlsVisible }">
             <input aria-label="Progresso do vídeo" type="range" min="0" max="100" step="0.1" :value="progress" @input="seek" />
             <div><button :aria-label="paused ? 'Reproduzir' : 'Pausar'" @click="togglePlayback"><Play v-if="paused" :size="20" fill="currentColor" /><Pause v-else :size="20" fill="currentColor" /></button><button :aria-label="muted ? 'Ativar som' : 'Silenciar'" @click="toggleMuted"><VolumeX v-if="muted" :size="20" /><Volume2 v-else :size="20" /></button><button :aria-label="isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'" @click="toggleFullscreen"><Minimize v-if="isFullscreen" :size="19" /><Maximize v-else :size="19" /></button></div>

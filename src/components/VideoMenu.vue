@@ -1,14 +1,14 @@
 <script setup>
 import { ref } from 'vue'
-import { Bookmark, BookmarkCheck, Download, Link, Monitor, Smartphone, X } from '@lucide/vue'
+import { Bookmark, BookmarkCheck, Download, FileJson, Link, Monitor, Smartphone, X } from '@lucide/vue'
 
-defineProps({ downloadUrl: { type: String, required: true }, showFormat: Boolean, vertical: Boolean, saved: Boolean })
+defineProps({ downloadUrl: { type: String, required: true }, jsonUrl: { type: String, default: '' }, jsonFilename: { type: String, default: 'pato7s-clipe.json' }, showFormat: Boolean, showSave: { type: Boolean, default: true }, showShare: { type: Boolean, default: true }, vertical: Boolean, saved: Boolean })
 const emit = defineEmits(['save', 'share', 'vertical', 'complete'])
 const open = ref(false)
 const menuRoot = ref(null)
 let resumeOnClose = false
 
-function relatedVideo() { return menuRoot.value?.closest('.short-player-area, .player-wrap, .clip-picker-player')?.querySelector('video') }
+function relatedVideo() { return menuRoot.value?.closest('.short-player-area, .player-wrap, .clip-picker-player, .sequence-player')?.querySelector('video') }
 function openMenu() {
   const video = relatedVideo()
   resumeOnClose = Boolean(video && !video.paused && !video.ended)
@@ -29,7 +29,7 @@ function setComplete() { emit('complete'); closeMenu() }
 <template>
   <div ref="menuRoot" class="video-menu">
     <div class="video-menu-controls">
-      <button class="save-video-button" :class="saved && 'is-saved'" :aria-label="saved ? 'Remover dos vídeos salvos' : 'Salvar vídeo'" :title="saved ? 'Remover dos salvos' : 'Salvar vídeo'" @click="$emit('save')">
+      <button v-if="showSave" class="save-video-button" :class="saved && 'is-saved'" :aria-label="saved ? 'Remover dos vídeos salvos' : 'Salvar vídeo'" :title="saved ? 'Remover dos salvos' : 'Salvar vídeo'" @click="$emit('save')">
         <BookmarkCheck v-if="saved" :size="19" aria-hidden="true" />
         <Bookmark v-else :size="19" aria-hidden="true" />
       </button>
@@ -44,7 +44,9 @@ function setComplete() { emit('complete'); closeMenu() }
             <button v-if="showFormat && !vertical" class="video-menu-option" @click="setFormat"><Smartphone :size="19" /><span><strong>Formato vertical</strong><small>Preenche a tela como um short.</small></span></button>
             <button v-if="showFormat && vertical" class="video-menu-option" @click="setComplete"><Monitor :size="19" /><span><strong>Formato completo</strong><small>Volta para a proporção original.</small></span></button>
             <a class="video-menu-option" :href="downloadUrl" download @click="closeMenu"><Download :size="19" /><span><strong>Baixar vídeo</strong><small>Salva uma cópia no seu dispositivo.</small></span></a>
-            <button class="video-menu-option" @click="share"><Link :size="19" /><span><strong>Compartilhar</strong><small>Copia ou abre as opções de compartilhamento.</small></span></button>
+            <a v-if="jsonUrl" class="video-menu-option" :href="jsonUrl" target="_blank" rel="noopener" @click="closeMenu"><FileJson :size="19" /><span><strong>Abrir JSON</strong><small>Mostra os dados deste clipe.</small></span></a>
+            <a v-if="jsonUrl" class="video-menu-option" :href="jsonUrl" :download="jsonFilename" @click="closeMenu"><Download :size="19" /><span><strong>Baixar JSON</strong><small>Salva os dados deste clipe.</small></span></a>
+            <button v-if="showShare" class="video-menu-option" @click="share"><Link :size="19" /><span><strong>Compartilhar</strong><small>Copia ou abre as opções de compartilhamento.</small></span></button>
           </div>
         </section>
       </div>

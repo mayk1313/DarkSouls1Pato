@@ -1,9 +1,13 @@
 <script setup>
-import { Play } from '@lucide/vue'
+import { computed } from 'vue'
+import { Download, FileJson, Play } from '@lucide/vue'
 import { deathVideoUrl, episodeValue, seasonValue } from '../lib/video'
+import { jsonDataUrl, savedClipsExport } from '../lib/clip-json'
 
-defineProps({ deaths: { type: Array, default: () => [] } })
+const props = defineProps({ deaths: { type: Array, default: () => [] } })
 defineEmits(['open'])
+
+const savedJsonUrl = computed(() => jsonDataUrl(savedClipsExport(props.deaths)))
 
 function causeName(death) {
   return death.cause?.detail ?? death.cause?.type ?? 'Causa não identificada'
@@ -17,7 +21,11 @@ function causeName(death) {
         <p class="eyebrow">Sua coleção</p>
         <h2>Vídeos salvos</h2>
       </div>
-      <span class="saved-video-count">{{ deaths.length }} {{ deaths.length === 1 ? 'vídeo' : 'vídeos' }}</span>
+      <div class="saved-video-header-actions">
+        <span class="saved-video-count">{{ deaths.length }} {{ deaths.length === 1 ? 'vídeo' : 'vídeos' }}</span>
+        <a class="saved-json-action" :href="savedJsonUrl" target="_blank" rel="noopener" title="Abrir JSON dos vídeos salvos"><FileJson :size="16" />Abrir JSON</a>
+        <a class="saved-json-action" :href="savedJsonUrl" download="pato7s-videos-salvos.json" title="Baixar JSON dos vídeos salvos"><Download :size="16" />Baixar JSON</a>
+      </div>
     </header>
 
     <p v-if="!deaths.length" class="state-message">Você ainda não salvou nenhum vídeo.</p>

@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ArrowLeft } from '@lucide/vue'
 import { deathVideoUrl, episodeValue, seasonValue } from '../lib/video'
+import { clipExport, clipJsonFilename, jsonDataUrl } from '../lib/clip-json'
 import VideoMenu from './VideoMenu.vue'
 
 const props = defineProps({ deaths: { type: Array, default: () => [] }, initialDeathId: Number, savedIds: { type: Array, default: () => [] }, shareView: { type: String, default: 'clips' }, showBack: Boolean })
@@ -19,6 +20,8 @@ const current = computed(() => playlist.value[active.value])
 const clipTitle = computed(() => current.value?.clip_comment ?? current.value?.comment ?? '')
 const causeName = computed(() => current.value?.cause?.detail ?? current.value?.cause?.type ?? 'Causa não identificada')
 const currentIsSaved = computed(() => props.savedIds.some((id) => Number(id) === Number(current.value?.id)))
+const currentJsonUrl = computed(() => current.value ? jsonDataUrl(clipExport(current.value)) : '')
+const currentJsonFilename = computed(() => clipJsonFilename(current.value))
 function shuffle(items) {
   const result = [...items]
   for (let index = result.length - 1; index > 0; index -= 1) {
@@ -112,7 +115,7 @@ onBeforeUnmount(() => {
         </article>
       </div>
       <button v-if="showBack" class="short-back-button" aria-label="Voltar para vídeos salvos" title="Voltar para vídeos salvos" @click="emit('back')"><ArrowLeft :size="21" /></button>
-      <VideoMenu class="short-video-menu" :download-url="deathVideoUrl(current, current.episode)" :saved="currentIsSaved" show-format :vertical="vertical" @save="saveCurrent" @vertical="vertical = true" @complete="vertical = false" @share="shareCurrent" />
+      <VideoMenu class="short-video-menu" :download-url="deathVideoUrl(current, current.episode)" :json-url="currentJsonUrl" :json-filename="currentJsonFilename" :saved="currentIsSaved" show-format :vertical="vertical" @save="saveCurrent" @vertical="vertical = true" @complete="vertical = false" @share="shareCurrent" />
       <div class="short-nav" aria-label="Navegação de clipes">
         <button :disabled="active === 0" aria-label="Clipe anterior" @click="select(active - 1)">↑</button>
         <button :disabled="active === playlist.length - 1" aria-label="Próximo clipe" @click="select(active + 1)">↓</button>

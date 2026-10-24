@@ -2,8 +2,10 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ArrowLeft, Clapperboard, Download, Eye, TvMinimalPlay } from '@lucide/vue'
 import { deathCodebergUrl, deathLiveUrl, deathVideoUrl, episodeValue, liveEmbedUrl, seasonValue } from '../lib/video'
+import { clipExport, clipJsonFilename, jsonDataUrl } from '../lib/clip-json'
 import { toSeconds } from '../lib/format'
 import ClassificationDisclaimer from './ClassificationDisclaimer.vue'
+import VideoMenu from './VideoMenu.vue'
 
 const props = defineProps({ episode: { type: Object, required: true }, title: String, deaths: { type: Array, default: () => [] } })
 const emit = defineEmits(['close'])
@@ -18,6 +20,8 @@ const playerUrl = computed(() => {
   const end = toSeconds(currentDeath.value?.clip_end)
   return liveEmbedUrl(liveUrl.value, start, end > start ? end : undefined, sequenceAutoplay.value)
 })
+const currentJsonUrl = computed(() => currentDeath.value ? jsonDataUrl(clipExport({ ...currentDeath.value, episode: currentDeath.value.episode ?? props.episode })) : '')
+const currentJsonFilename = computed(() => clipJsonFilename(currentDeath.value))
 
 watch(() => [props.episode.id, props.deaths.length], () => { sequenceIndex.value = 0 }, { immediate: true })
 function watchDeath(death) { const index = props.deaths.findIndex((item) => item.id === death.id); if (index >= 0) sequenceIndex.value = index }
@@ -50,6 +54,7 @@ onBeforeUnmount(() => window.removeEventListener('message', onYoutubeMessage))
           <video v-if="sequenceMode === 'clips' && currentDeath" :key="`clip-${currentDeath.id}-${sequenceAutoplay}`" class="sequence-video" controls :autoplay="sequenceAutoplay" playsinline :src="deathVideoUrl(currentDeath, currentDeath.episode ?? episode)" @ended="nextInSequence" />
           <iframe v-else-if="playerUrl" ref="youtubeFrame" :key="`youtube-${currentDeath?.id}-${sequenceAutoplay}`" class="episode-live" :src="playerUrl" title="Trecho da live no YouTube" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen @load="listenToYoutube"></iframe>
           <p v-else class="state-message">A live deste episódio não possui um link disponível.</p>
+          <VideoMenu v-if="currentDeath" class="episode-video-menu" :download-url="deathVideoUrl(currentDeath, currentDeath.episode ?? episode)" :json-url="currentJsonUrl" :json-filename="currentJsonFilename" :show-save="false" :show-share="false" />
         </div>
         <div class="sequence-status"><div><span>Origem</span><strong>{{ sequenceMode === 'youtube' ? 'Trecho da live no YouTube' : 'Clipe recortado' }}</strong></div><div><span>Causa</span><strong>{{ currentDeath?.cause?.detail ?? currentDeath?.cause?.type ?? 'Causa não identificada' }}</strong></div><div><span>Posição</span><strong>Clipe {{ sequenceIndex + 1 }} de {{ deaths.length }}</strong></div><div><span>Temporada</span><strong>{{ seasonValue(currentDeath ?? {}, episode) }} · EP {{ episodeValue(currentDeath ?? {}, episode) }}</strong></div></div>
       </template>

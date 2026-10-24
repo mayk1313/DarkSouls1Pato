@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Check, ChevronLeft, ChevronRight, Maximize, Minimize, Pause, Play, Volume2, VolumeX } from '@lucide/vue'
 import { deathVideoUrl, episodeValue, seasonValue } from '../lib/video'
+import { clipExport, clipJsonFilename, jsonDataUrl } from '../lib/clip-json'
 import VideoMenu from './VideoMenu.vue'
 import ClassificationDisclaimer from './ClassificationDisclaimer.vue'
 
@@ -22,6 +23,8 @@ const currentIndex = computed(() => confirmedNumber.value - 1)
 const current = computed(() => props.deaths[currentIndex.value])
 const currentIsSaved = computed(() => props.savedIds.some((id) => Number(id) === Number(current.value?.id)))
 const causeName = computed(() => current.value?.cause?.detail ?? current.value?.cause?.type ?? 'Causa não identificada')
+const currentJsonUrl = computed(() => current.value ? jsonDataUrl(clipExport(current.value)) : '')
+const currentJsonFilename = computed(() => clipJsonFilename(current.value))
 
 watch(() => props.deaths.length, (count) => {
   const next = Math.min(Math.max(confirmedNumber.value, 1), count || 1)
@@ -93,7 +96,7 @@ function shareCurrent() { if (current.value) emit('share', { death: current.valu
     <div v-if="current" ref="playerRoot" class="clip-picker-player" @mouseenter="showControls" @mousemove="showControls" @mouseleave="hideControls" @touchstart.passive="showControls" @focusin="showControls">
       <div class="clip-picker-stage">
         <video ref="player" :key="current.id" class="clip-picker-video" autoplay playsinline :src="deathVideoUrl(current, current.episode)" @click="togglePlayback" @timeupdate="updateProgress" @play="paused = false" @pause="paused = true" @volumechange="muted = player?.muted ?? false" />
-        <VideoMenu class="clip-picker-menu" :class="{ 'is-hidden': !controlsVisible }" :download-url="deathVideoUrl(current, current.episode)" :saved="currentIsSaved" @save="saveCurrent" @share="shareCurrent" />
+        <VideoMenu class="clip-picker-menu" :class="{ 'is-hidden': !controlsVisible }" :download-url="deathVideoUrl(current, current.episode)" :json-url="currentJsonUrl" :json-filename="currentJsonFilename" :saved="currentIsSaved" @save="saveCurrent" @share="shareCurrent" />
         <div class="clip-picker-controls" :class="{ 'is-hidden': !controlsVisible }">
           <input aria-label="Progresso do vídeo" type="range" min="0" max="100" step="0.1" :value="progress" @input="seek" />
           <div>

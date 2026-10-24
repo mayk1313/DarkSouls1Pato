@@ -136,7 +136,7 @@
   .sequence-controls { @apply flex flex-wrap items-center justify-end gap-3; }
   .sequence-modes button { @apply flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted transition hover:text-fg; }
   .sequence-modes button.active { @apply text-fg; background: color-mix(in srgb, var(--app-accent) 18%, var(--app-raised)); }
-  .sequence-player { @apply bg-black; }
+  .sequence-player { @apply relative bg-black; }
   .sequence-video { @apply block aspect-video w-full bg-black; }
   .sequence-status { @apply grid grid-cols-2 divide-x divide-y divide-line border-t border-line sm:grid-cols-4 sm:divide-y-0; }
   .sequence-status div { @apply min-w-0 p-4 sm:px-5; }
@@ -247,6 +247,8 @@
   .source-disclaimer { @apply mx-auto max-w-2xl pb-4 text-center text-xs leading-5 text-muted; }
   .classification-disclaimer { @apply mx-auto max-w-2xl pt-1 text-center text-xs leading-5 text-muted; }
   .saved-video-count { @apply rounded-full border border-line bg-panel px-3 py-1 text-xs tabular-nums text-muted; }
+  .saved-video-header-actions { @apply flex flex-wrap items-center justify-end gap-2; }
+  .saved-json-action { @apply inline-flex items-center gap-1.5 rounded-lg border border-line bg-panel px-3 py-1.5 text-xs font-medium text-fg transition hover:border-accent hover:text-accent; }
   .saved-video-grid { @apply grid gap-4 sm:grid-cols-2 xl:grid-cols-3; }
   .saved-video-card { @apply overflow-hidden rounded-xl border border-line bg-panel text-left transition hover:-translate-y-0.5 hover:border-accent hover:bg-raised; }
   .saved-video-preview { @apply relative block aspect-video overflow-hidden bg-black; }
@@ -316,6 +318,7 @@
   .format-switch-track i { @apply grid size-5 place-items-center rounded-full bg-fg text-[#171714] transition-transform; }
   .format-switch-track.is-vertical i { @apply translate-x-5; }
   .detail-video-menu { @apply absolute right-3 top-3; }
+  .episode-video-menu { @apply absolute right-3 top-3; }
   .short-video-menu { @apply absolute right-4 top-4; }
   .short-player-area > .short-video-menu { @apply absolute right-4 top-4 z-20; }
   .short-player-area > .short-video-menu .video-menu-trigger { @apply size-12 text-base; }
