@@ -19,7 +19,7 @@ jobs:
           set -euo pipefail
 
           curl --silent --show-error --fail-with-body \
-            "$SUPABASE_URL/rest/v1/death_count_history?select=id&limit=1" \
+            "$SUPABASE_URL/rest/v1/rpc/keepalive_check" \
             -H "apikey: $SUPABASE_KEY" \
             -H "Authorization: Bearer $SUPABASE_KEY"
 
